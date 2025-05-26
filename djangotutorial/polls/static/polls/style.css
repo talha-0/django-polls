@@ -1,6 +1,8 @@
 li a {
   color: green;
 }
+
 body {
-    background: white url("images/background.png") no-repeat center;
+  min-height: 100vh;
+  background: white url("images/background.png") no-repeat center;
 }

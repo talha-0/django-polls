@@ -22,7 +22,7 @@ class IndexView(generic.ListView):
             pub_date__lte=timezone.now()
         ).order_by("-pub_date")[:5]
 
-class DetailView(generic.DeleteView):
+class DetailView(generic.DetailView):
     model = Question
     template_name = "polls/detail.html"
 
@@ -31,9 +31,10 @@ class DetailView(generic.DeleteView):
             pub_date__lte=timezone.now()
         )
 
-class ResultsView(generic.DeleteView):
+class ResultsView(generic.DetailView):
     model = Question
     template_name = "polls/results.html"
+
 
 
 # def index(request):

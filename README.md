@@ -38,3 +38,10 @@ First add the add in the setting->installed apps then run the following command:
 python manage.py makemigrations <app name>
 python manage.py migrate
 ```
+
+# Writing Tests
+* separate TestClass for each model or view
+
+* separate test method for each set of conditions you want to test
+
+* test method names that describe their function

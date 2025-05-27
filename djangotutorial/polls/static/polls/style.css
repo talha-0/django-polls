@@ -4,5 +4,5 @@ li a {
 
 body {
   min-height: 100vh;
-  background: white url("images/background.png") no-repeat center;
+  /* background: white url("images/background.png") no-repeat center; */
 }

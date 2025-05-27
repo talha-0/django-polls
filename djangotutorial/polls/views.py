@@ -11,6 +11,7 @@ from .models import Choice, Question
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
     context_object_name = "latest_question_list"
+    paginate_by = 1
 
     def get_queryset(self):
         """Generates last five published questions

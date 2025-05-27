@@ -6,12 +6,22 @@ from django.urls import reverse
 from django.views import generic
 from django.utils import timezone
 
+import logging
 from .models import Choice, Question
+
+logger = logging.getLogger(__name__)
+
+def get_past_question_or_404(pk):
+    try:
+        return Question.objects.get(pk=pk, pub_date__lte=timezone.now())
+    except Question.DoesNotExist:
+        logger.warning("No questions found with pub_date <= now")
+        raise Http404("Question does not exist")
 
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
     context_object_name = "latest_question_list"
-    paginate_by = 1
+    paginate_by = 3
 
     def get_queryset(self):
         """Generates last five published questions
@@ -19,23 +29,41 @@ class IndexView(generic.ListView):
         Returns:
             list[Questions]: list of 5 questions
         """
-        return Question.objects.filter(
+        logger.info("Fetching the latest 5 published questions")
+
+        queryset = Question.objects.filter(
             pub_date__lte=timezone.now()
         ).order_by("-pub_date")[:5]
+
+        if queryset.count() == 0:
+            logger.warning("No questions found with pub_date <= now")
+        else:
+            logger.info(f"Fetched {queryset.count()} questions")
+
+        return queryset
 
 class DetailView(generic.DetailView):
     model = Question
     template_name = "polls/detail.html"
 
-    def get_queryset(self):
-        return Question.objects.filter(
-            pub_date__lte=timezone.now()
-        )
+    def get_object(self):
+        logger.info("Fetching details for Question ID %s", self.kwargs['pk'])
+        question = get_past_question_or_404(self.kwargs['pk'])
+        logger.info(f"Fetched question {question}")
+
+        return question
 
 class ResultsView(generic.DetailView):
     model = Question
     template_name = "polls/results.html"
 
+    def get_object(self):
+        logger.info("Fetching Results for Question ID %s", self.kwargs['pk'])
+        question = get_past_question_or_404(self.kwargs['pk'])
+
+        logger.info(f"Fetched question {question}")
+
+        return question
 
 
 # def index(request):
@@ -76,10 +104,23 @@ class ResultsView(generic.DetailView):
 #     )
 
 def vote(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
+    """
+    Adds a vote to the selected choice and increase vote by 1.
+
+    Args:
+        request (_type_): _description_
+        question_id (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    logger.info(f"Voting for Question id: {question_id}")
+    question = get_past_question_or_404(question_id)
     try:
         selected_choice = question.choice_set.get(pk=request.POST["choice"])
+        logger.info(f"Choice: {selected_choice}")
     except (KeyError, Choice.DoesNotExist):
+        logger.warning(f"You didn't select a valid choice.")
         return render(
             request,
             "polls/detail.html",
@@ -91,5 +132,6 @@ def vote(request, question_id):
     else:
         selected_choice.votes = F("votes") + 1
         selected_choice.save()
+        logger.info(f"Votes increased")
 
         return HttpResponseRedirect(reverse("polls:results",args=(question_id,)))

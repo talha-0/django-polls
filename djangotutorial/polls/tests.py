@@ -1,9 +1,11 @@
 from django.test import TestCase
 from django.utils import timezone
 from django.urls import reverse
+from django.contrib.auth.models import User
 # Create your tests here.
 import datetime
 from .models import Question
+
 
 class QuestionModelTests(TestCase):
   def test_was_published_recently_with_future_question(self):
@@ -49,10 +51,17 @@ def create_question(question_text, days):
   )
 
 class QuestionIndexViewTests(TestCase):
+  def setUp(self):
+    self.user = User.objects.create_user(username='testuser', password='testpass')
+
   def test_no_questions(self):
     """
     If no questions found , an appropriate message is displayed
     """
+    self.client.login(
+      username='testuser',
+      password='testpass'
+    )
     response = self.client.get(reverse("polls:index"))
     self.assertEqual(
       response.status_code,
@@ -72,6 +81,10 @@ class QuestionIndexViewTests(TestCase):
     Questions with a pub_date in the past are displayed on the
     index page.
     """
+    self.client.login(
+      username='testuser',
+      password='testpass'
+    )
     question = create_question(
        question_text="Past question",
        days=-30
@@ -89,6 +102,10 @@ class QuestionIndexViewTests(TestCase):
     Questions with a pub_date in the future are not displayed on
     the index page.
     """
+    self.client.login(
+      username='testuser',
+      password='testpass'
+    )
     question = create_question(
        question_text="Future question",
        days=30
@@ -106,6 +123,10 @@ class QuestionIndexViewTests(TestCase):
     Even if both past and future questions exist, only past questions
     are displayed.
     """
+    self.client.login(
+      username='testuser',
+      password='testpass'
+    )
     create_question(
        question_text="Future question",
        days=30
@@ -126,6 +147,10 @@ class QuestionIndexViewTests(TestCase):
     """
     The index page may show multiple past questions.
     """
+    self.client.login(
+      username='testuser',
+      password='testpass'
+    )
     question1 = create_question(
        question_text="Past question 1.",
        days=-5
@@ -143,11 +168,18 @@ class QuestionIndexViewTests(TestCase):
     )
 
 class QuestionDetailViewTests(TestCase):
+  def setUp(self):
+    self.user = User.objects.create_user(username='testuser', password='testpass')
+
   def test_future_question(self):
     """
     The detail view of a question with a pub_date in the future
     returns a 404 not found.
     """
+    self.client.login(
+      username='testuser',
+      password='testpass'
+    )
     future_question = create_question(
       question_text="Future question.",
       days=30
@@ -161,6 +193,10 @@ class QuestionDetailViewTests(TestCase):
     The detail view of a question with a pub_date in the past
     displays the question's text.
     """
+    self.client.login(
+      username='testuser',
+      password='testpass'
+    )
     past_question = create_question(
       question_text="Future question.",
       days=-30

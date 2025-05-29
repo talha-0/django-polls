@@ -1,13 +1,16 @@
 from django.http import Http404, HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template import loader
 from django.db.models import F
 from django.urls import reverse
 from django.views import generic
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 import logging
 from .models import Choice, Question
+from .forms import QuestionForm, ChoiceFormSet
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +21,11 @@ def get_past_question_or_404(pk):
         logger.warning("No questions found with pub_date <= now")
         raise Http404("Question does not exist")
 
-class IndexView(generic.ListView):
+class IndexView(LoginRequiredMixin, generic.ListView):
     template_name = "polls/index.html"
     context_object_name = "latest_question_list"
-    paginate_by = 3
-
+    paginate_by = 5
+    login_url = 'login'
     def get_queryset(self):
         """Generates last five published questions
 
@@ -33,7 +36,7 @@ class IndexView(generic.ListView):
 
         queryset = Question.objects.filter(
             pub_date__lte=timezone.now()
-        ).order_by("-pub_date")[:5]
+        ).order_by("-pub_date")
 
         if queryset.count() == 0:
             logger.warning("No questions found with pub_date <= now")
@@ -42,10 +45,10 @@ class IndexView(generic.ListView):
 
         return queryset
 
-class DetailView(generic.DetailView):
+class DetailView(LoginRequiredMixin, generic.DetailView):
     model = Question
     template_name = "polls/detail.html"
-
+    login_url = 'login'
     def get_object(self):
         logger.info("Fetching details for Question ID %s", self.kwargs['pk'])
         question = get_past_question_or_404(self.kwargs['pk'])
@@ -53,10 +56,10 @@ class DetailView(generic.DetailView):
 
         return question
 
-class ResultsView(generic.DetailView):
+class ResultsView(LoginRequiredMixin, generic.DetailView):
     model = Question
     template_name = "polls/results.html"
-
+    login_url = 'login'
     def get_object(self):
         logger.info("Fetching Results for Question ID %s", self.kwargs['pk'])
         question = get_past_question_or_404(self.kwargs['pk'])
@@ -64,6 +67,31 @@ class ResultsView(generic.DetailView):
         logger.info(f"Fetched question {question}")
 
         return question
+
+@login_required(login_url='login')
+def add_question(request):
+    if request.method == 'POST':
+        form = QuestionForm(request.POST)
+        if form.is_valid():
+            question = form.save(commit=False)
+            question.author = request.user
+            question.pub_date = timezone.now()
+            question.save()
+
+            formset = ChoiceFormSet(request.POST, instance=question)
+            if formset.is_valid():
+                formset.save()
+                return redirect('polls:index')
+        else:
+            formset = ChoiceFormSet(request.POST)
+    else:
+        form = QuestionForm()
+        formset = ChoiceFormSet()
+
+    return render(request, 'polls/add_question.html', {
+        'form': form,
+        'formset': formset
+    })
 
 
 # def index(request):
@@ -103,6 +131,7 @@ class ResultsView(generic.DetailView):
 #         }
 #     )
 
+@login_required(login_url='login')
 def vote(request, question_id):
     """
     Adds a vote to the selected choice and increase vote by 1.

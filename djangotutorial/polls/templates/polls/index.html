@@ -3,6 +3,10 @@
 {% block content %}
 <h1 class="text-center mb-3">Poll Questions</h1>
 
+<div class="text-end mb-3">
+  <a href="{% url 'polls:add_question' %}" class="btn btn-success btn-sm">Add New Question</a>
+</div>
+
 {% if latest_question_list %}
 	{% for question in latest_question_list %}
 		<div class="card mb-3">  {# Fixed class name typo: 'card-mb-3' → 'card mb-3' #}

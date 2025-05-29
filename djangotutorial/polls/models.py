@@ -2,22 +2,24 @@ import datetime
 from django.db import models
 from django.utils import timezone
 from django.contrib import admin
+from django.contrib.auth.models import User
 # Create your models here.
 class Question(models.Model):
-  question_text = models.CharField(max_length=200)
-  pub_date = models.DateTimeField("date published")
+    question_text = models.CharField(max_length=200)
+    pub_date = models.DateTimeField("date published", default=timezone.now)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
 
-  def __str__(self):
-    return self.question_text
+    def __str__(self):
+        return self.question_text
 
-  @admin.display(
-      boolean = True,
-      ordering = "pub_date",
-      description = "Recently published?",
-  )
-  def was_published_recently(self):
-    now = timezone.now()
-    return now - datetime.timedelta(days=1) <= self.pub_date <= now
+    @admin.display(
+        boolean=True,
+        ordering="pub_date",
+        description="Recently published?",
+    )
+    def was_published_recently(self):
+        now = timezone.now()
+        return now - datetime.timedelta(days=1) <= self.pub_date <= now
 
 class Choice(models.Model):
   question = models.ForeignKey(Question, on_delete=models.CASCADE)

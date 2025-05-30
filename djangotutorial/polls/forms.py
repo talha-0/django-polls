@@ -2,10 +2,12 @@ from django import forms
 from .models import Question, Choice
 from django.forms.models import inlineformset_factory
 
+
 class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
         fields = ['question_text']
+
 
 ChoiceFormSet = inlineformset_factory(
     Question, Choice,
@@ -15,4 +17,3 @@ ChoiceFormSet = inlineformset_factory(
     validate_min=True,
     can_delete=True
 )
-

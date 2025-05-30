@@ -1,7 +1,6 @@
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import loader
-from django.db.models import F
 from django.urls import reverse
 from django.views import generic
 from django.utils import timezone
@@ -9,10 +8,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 import logging
-from .models import Choice, Question
+from .models import Choice, Question, Vote
 from .forms import QuestionForm, ChoiceFormSet
 
 logger = logging.getLogger(__name__)
+
 
 def get_past_question_or_404(pk):
     try:
@@ -21,11 +21,13 @@ def get_past_question_or_404(pk):
         logger.warning("No questions found with pub_date <= now")
         raise Http404("Question does not exist")
 
+
 class IndexView(LoginRequiredMixin, generic.ListView):
     template_name = "polls/index.html"
     context_object_name = "latest_question_list"
     paginate_by = 5
     login_url = 'login'
+
     def get_queryset(self):
         """Generates last five published questions
 
@@ -45,10 +47,12 @@ class IndexView(LoginRequiredMixin, generic.ListView):
 
         return queryset
 
+
 class DetailView(LoginRequiredMixin, generic.DetailView):
     model = Question
     template_name = "polls/detail.html"
     login_url = 'login'
+
     def get_object(self):
         logger.info("Fetching details for Question ID %s", self.kwargs['pk'])
         question = get_past_question_or_404(self.kwargs['pk'])
@@ -56,10 +60,12 @@ class DetailView(LoginRequiredMixin, generic.DetailView):
 
         return question
 
+
 class ResultsView(LoginRequiredMixin, generic.DetailView):
     model = Question
     template_name = "polls/results.html"
     login_url = 'login'
+
     def get_object(self):
         logger.info("Fetching Results for Question ID %s", self.kwargs['pk'])
         question = get_past_question_or_404(self.kwargs['pk'])
@@ -67,6 +73,7 @@ class ResultsView(LoginRequiredMixin, generic.DetailView):
         logger.info(f"Fetched question {question}")
 
         return question
+
 
 @login_required(login_url='login')
 def add_question(request):
@@ -76,10 +83,10 @@ def add_question(request):
             question = form.save(commit=False)
             question.author = request.user
             question.pub_date = timezone.now()
-            question.save()
-
             formset = ChoiceFormSet(request.POST, instance=question)
+
             if formset.is_valid():
+                question.save()
                 formset.save()
                 return redirect('polls:index')
         else:
@@ -158,9 +165,25 @@ def vote(request, question_id):
                 "error_message": "You didn't select a choice.",
             },
         )
-    else:
-        selected_choice.votes = F("votes") + 1
-        selected_choice.save()
-        logger.info(f"Votes increased")
+    if Vote.objects.filter(
+        voter=request.user,
+        choice__question=question
+    ).exists():
+        logger.warning(
+            f"User {request.user.username} has already voted for this question.")
+        return render(
+            request,
+            "polls/detail.html",
+            {
+                "question": question,
+                "error_message": "You have already voted on this question.",
+            },
+        )
 
-        return HttpResponseRedirect(reverse("polls:results",args=(question_id,)))
+    Vote.objects.create(
+        choice=selected_choice,
+        voter=request.user
+    )
+    logger.info("Vote recorded successfully.")
+
+    return HttpResponseRedirect(reverse("polls:results", args=(question_id,)))

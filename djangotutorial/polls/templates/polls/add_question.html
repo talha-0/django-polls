@@ -31,7 +31,6 @@
       {% endfor %}
     </div>
 
-    <!-- Hidden template for new choices -->
     <div class="choice-form d-none" id="empty-form">
       {{ formset.empty_form.choice_text.label_tag }}
       {{ formset.empty_form.choice_text }}
@@ -45,91 +44,86 @@
   </form>
 
   <script>
-    const formsetDiv = document.getElementById('choice-formset');
-    const emptyForm = document.getElementById('empty-form');
-    const addBtn = document.getElementById('add-choice');
-    const totalForms = document.querySelector('[name="{{ formset.prefix }}-TOTAL_FORMS"]');
+    const formsetDiv = document.getElementById('choice-formset')
+    const emptyForm = document.getElementById('empty-form')
+    const addBtn = document.getElementById('add-choice')
+    const totalForms = document.querySelector('[name="{{ formset.prefix }}-TOTAL_FORMS"]')
 
-    const emptyFormTemplate = emptyForm.innerHTML;
+    const emptyFormTemplate = emptyForm.innerHTML
 
     function updateDeleteButtons() {
-      document.querySelectorAll('.remove-choice').forEach(btn => {
+      document.querySelectorAll('.remove-choice').forEach((btn) => {
         btn.onclick = () => {
-          const allForms = formsetDiv.querySelectorAll('.choice-form:not(.d-none)');
+          const allForms = formsetDiv.querySelectorAll('.choice-form:not(.d-none)')
           if (allForms.length <= 1) {
-            alert('At least one choice is required.');
-            return;
+            alert('At least one choice is required.')
+            return
           }
 
-          const formDiv = btn.closest('.choice-form');
-          const deleteInput = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]');
+          const formDiv = btn.closest('.choice-form')
+          const deleteInput = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]')
 
           if (deleteInput) {
-            deleteInput.checked = true;
-            formDiv.classList.add('d-none');  // Hide by adding d-none class
+            deleteInput.checked = true
+            formDiv.classList.add('d-none')
           } else {
-            formDiv.remove();
-            updateTotalForms();
+            formDiv.remove()
+            updateTotalForms()
           }
 
-          renumberChoices();
-        };
-      });
+          renumberChoices()
+        }
+      })
     }
 
     function updateTotalForms() {
-      const totalVisible = formsetDiv.querySelectorAll('.choice-form:not(.d-none)').length;
-      totalForms.value = totalVisible;
+      const totalVisible = formsetDiv.querySelectorAll('.choice-form:not(.d-none)').length
+      totalForms.value = totalVisible
     }
 
     function renumberChoices() {
-      const forms = formsetDiv.querySelectorAll('.choice-form:not(.d-none)');
+      const forms = formsetDiv.querySelectorAll('.choice-form:not(.d-none)')
       forms.forEach((div, index) => {
-        const label = div.querySelector('label');
-        const input = div.querySelector('input[type="text"]');
-        const deleteCheckbox = div.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        const label = div.querySelector('label')
+        const input = div.querySelector('input[type="text"]')
+        const deleteCheckbox = div.querySelector('input[type="checkbox"][name$="-DELETE"]')
 
         if (label && input) {
-          const newIndex = index;
+          const newIndex = index
 
-          // Update label text
-          label.innerText = `Choice ${newIndex + 1}`;
+          label.innerText = `Choice ${newIndex + 1}`
 
-          // Update label 'for' attribute
-          const newInputId = `id_{{ formset.prefix }}-${newIndex}-choice_text`;
-          label.setAttribute('for', newInputId);
+          const newInputId = `id_{{ formset.prefix }}-${newIndex}-choice_text`
+          label.setAttribute('for', newInputId)
 
-          // Update input id and name
-          input.id = newInputId;
-          input.name = `{{ formset.prefix }}-${newIndex}-choice_text`;
+          input.id = newInputId
+          input.name = `{{ formset.prefix }}-${newIndex}-choice_text`
 
-          // Update delete checkbox id and name
           if (deleteCheckbox) {
-            const newDeleteId = `id_{{ formset.prefix }}-${newIndex}-DELETE`;
-            deleteCheckbox.id = newDeleteId;
-            deleteCheckbox.name = `{{ formset.prefix }}-${newIndex}-DELETE`;
+            const newDeleteId = `id_{{ formset.prefix }}-${newIndex}-DELETE`
+            deleteCheckbox.id = newDeleteId
+            deleteCheckbox.name = `{{ formset.prefix }}-${newIndex}-DELETE`
           }
         }
-      });
+      })
 
-      updateTotalForms(); // Keep total forms count updated after renumbering
+      updateTotalForms()
     }
 
     addBtn.addEventListener('click', () => {
-      const formNum = parseInt(totalForms.value);
-      const newForm = document.createElement('div');
-      newForm.className = 'choice-form mb-2 border rounded p-2 position-relative';
-      newForm.innerHTML = emptyFormTemplate.replace(/__prefix__/g, formNum);
+      const formNum = parseInt(totalForms.value)
+      const newForm = document.createElement('div')
+      newForm.className = 'choice-form mb-2 border rounded p-2 position-relative'
+      newForm.innerHTML = emptyFormTemplate.replace(/__prefix__/g, formNum)
 
-      formsetDiv.appendChild(newForm);
+      formsetDiv.appendChild(newForm)
 
-      totalForms.value = formNum + 1;
-      updateDeleteButtons();
-      renumberChoices();
-    });
+      totalForms.value = formNum + 1
+      updateDeleteButtons()
+      renumberChoices()
+    })
 
-    // Initialize delete buttons and numbering on page load
-    updateDeleteButtons();
-    renumberChoices();
+    updateDeleteButtons()
+    renumberChoices()
   </script>
 {% endblock %}

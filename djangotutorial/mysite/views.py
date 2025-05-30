@@ -3,23 +3,24 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from .forms import CreateUserForm
 
+
 def registerUser(request):
-  if request.method == "POST":
-    form = CreateUserForm(request.POST)
-    if form.is_valid():
-      form.save()
-      username = form.cleaned_data.get("username")
-      messages.success(request, f"Account was created for {username}")
-      return redirect("login")
+    if request.method == "POST":
+        form = CreateUserForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get("username")
+            messages.success(request, f"Account was created for {username}")
+            return redirect("login")
 
-  else:
-    form = CreateUserForm()
+    else:
+        form = CreateUserForm()
 
-  context = { "form": form }
+    context = {"form": form}
 
-  return render(request, 'registration/register.html', context)
+    return render(request, 'registration/register.html', context)
 
 
 def logoutUser(request):
-  logout(request)
-  return redirect("login")
+    logout(request)
+    return redirect("login")

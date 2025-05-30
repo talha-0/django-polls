@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.shortcuts import redirect
 from django.urls import include, path
 from debug_toolbar.toolbar import debug_toolbar_urls
 
@@ -25,5 +26,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("logout/", views.logoutUser, name='logout'),
     path("register/", views.registerUser, name='register'),
+    path("", lambda request: redirect("polls/", permanent=False)),
     path("", include('django.contrib.auth.urls')),
 ] + debug_toolbar_urls()

@@ -1,0 +1,8 @@
+li a {
+  color: green;
+}
+
+body {
+  min-height: 100vh;
+  /* background: white url("images/background.png") no-repeat center; */
+}

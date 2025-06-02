@@ -1,15 +1,18 @@
+import logging
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template import loader
-from django.urls import reverse
-from django.views import generic
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views import generic
 
-import logging
+from .filters import QuestionFilter
+from .forms import ChoiceFormSet, QuestionForm
 from .models import Choice, Question, Vote
-from .forms import QuestionForm, ChoiceFormSet
 
 logger = logging.getLogger(__name__)
 
@@ -19,43 +22,50 @@ def get_past_question_or_404(pk):
         return Question.objects.get(pk=pk, pub_date__lte=timezone.now())
     except Question.DoesNotExist:
         logger.warning("No questions found with pub_date <= now")
-        raise Http404("Question does not exist")
+        raise Http404("No questions found with pub_date <= now")
 
 
 class IndexView(LoginRequiredMixin, generic.ListView):
     template_name = "polls/index.html"
     context_object_name = "latest_question_list"
     paginate_by = 5
-    login_url = 'login'
+    login_url = "login"
 
     def get_queryset(self):
-        """Generates last five published questions
+        """Generates last published questions
 
         Returns:
-            list[Questions]: list of 5 questions
+            list[Questions]: list of questions
         """
-        logger.info("Fetching the latest 5 published questions")
+        logger.info("Fetching the latest published questions")
 
-        queryset = Question.objects.filter(
-            pub_date__lte=timezone.now()
-        ).order_by("-pub_date")
+        queryset = Question.objects.filter(pub_date__lte=timezone.now()).order_by(
+            "-pub_date"
+        )
+        self.filterset = QuestionFilter(self.request.GET, queryset=queryset)
+        filtered_qs = self.filterset.qs
 
         if queryset.count() == 0:
             logger.warning("No questions found with pub_date <= now")
         else:
             logger.info(f"Fetched {queryset.count()} questions")
 
-        return queryset
+        return filtered_qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filter"] = self.filterset
+        return context
 
 
 class DetailView(LoginRequiredMixin, generic.DetailView):
     model = Question
     template_name = "polls/detail.html"
-    login_url = 'login'
+    login_url = "login"
 
     def get_object(self):
-        logger.info("Fetching details for Question ID %s", self.kwargs['pk'])
-        question = get_past_question_or_404(self.kwargs['pk'])
+        logger.info("Fetching details for Question ID %s", self.kwargs["pk"])
+        question = get_past_question_or_404(self.kwargs["pk"])
         logger.info(f"Fetched question {question}")
 
         return question
@@ -64,20 +74,20 @@ class DetailView(LoginRequiredMixin, generic.DetailView):
 class ResultsView(LoginRequiredMixin, generic.DetailView):
     model = Question
     template_name = "polls/results.html"
-    login_url = 'login'
+    login_url = "login"
 
     def get_object(self):
-        logger.info("Fetching Results for Question ID %s", self.kwargs['pk'])
-        question = get_past_question_or_404(self.kwargs['pk'])
+        logger.info("Fetching Results for Question ID %s", self.kwargs["pk"])
+        question = get_past_question_or_404(self.kwargs["pk"])
 
         logger.info(f"Fetched question {question}")
 
         return question
 
 
-@login_required(login_url='login')
+@login_required(login_url="login")
 def add_question(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = QuestionForm(request.POST)
         if form.is_valid():
             question = form.save(commit=False)
@@ -88,17 +98,97 @@ def add_question(request):
             if formset.is_valid():
                 question.save()
                 formset.save()
-                return redirect('polls:index')
+                return redirect("polls:index")
         else:
             formset = ChoiceFormSet(request.POST)
     else:
         form = QuestionForm()
         formset = ChoiceFormSet()
 
-    return render(request, 'polls/add_question.html', {
-        'form': form,
-        'formset': formset
-    })
+    return render(
+        request, "polls/add_question.html", {"form": form, "formset": formset}
+    )
+
+
+class CreatedPollsView(LoginRequiredMixin, generic.ListView):
+    template_name = "polls/my_polls.html"
+    context_object_name = "latest_question_list"
+    paginate_by = 5
+    login_url = "login"
+
+    def get_queryset(self):
+        """Generates last questions
+
+        Returns:
+            list[Questions]: list of questions
+        """
+        logger.info("Fetching the latest questions")
+
+        queryset = Question.objects.filter(author=self.request.user).order_by(
+            "-pub_date"
+        )
+
+        if queryset.count() == 0:
+            logger.warning("No questions found")
+        else:
+            logger.info(f"Fetched {queryset.count()} questions")
+
+        return queryset
+
+
+from django.http import HttpResponseForbidden
+
+
+class QuestionDeleteView(LoginRequiredMixin, generic.DeleteView):
+    model = Question
+    template_name = "polls/confirm_delete.html"
+    success_url = reverse_lazy("polls:my_polls")
+    login_url = "login"
+
+    def dispatch(self, request, *args, **kwargs):
+        question = self.get_object()
+        if question.author != request.user:
+            return HttpResponseForbidden("You are not allowed to delete this question.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+
+
+@login_required(login_url="login")
+def edit_question(request, pk):
+    question = get_object_or_404(Question, pk=pk, author=request.user)
+
+    if Vote.objects.filter(choice__question=question).exists():
+        messages.error(
+            request, "Cannot edit this question because it has received votes."
+        )
+        return redirect("polls:my_polls")
+
+    if request.method == "POST":
+        form = QuestionForm(request.POST, instance=question)
+        formset = ChoiceFormSet(request.POST, instance=question)
+
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            messages.success(request, "Question and choices updated successfully.")
+            return redirect("polls:my_polls")
+        else:
+            print("Form errors:", form.errors)
+            print(form)
+            print("Formset errors:", formset.errors)
+            print(formset)
+            messages.error(
+                request, "There was an error updating the question or choices."
+            )
+    else:
+        form = QuestionForm(instance=question)
+        formset = ChoiceFormSet(instance=question)
+
+    return render(
+        request, "polls/add_question.html", {"form": form, "formset": formset}
+    )
 
 
 # def index(request):
@@ -138,7 +228,8 @@ def add_question(request):
 #         }
 #     )
 
-@login_required(login_url='login')
+
+@login_required(login_url="login")
 def vote(request, question_id):
     """
     Adds a vote to the selected choice and increase vote by 1.
@@ -165,12 +256,10 @@ def vote(request, question_id):
                 "error_message": "You didn't select a choice.",
             },
         )
-    if Vote.objects.filter(
-        voter=request.user,
-        choice__question=question
-    ).exists():
+    if Vote.objects.filter(voter=request.user, choice__question=question).exists():
         logger.warning(
-            f"User {request.user.username} has already voted for this question.")
+            f"User {request.user.username} has already voted for this question."
+        )
         return render(
             request,
             "polls/detail.html",
@@ -180,10 +269,7 @@ def vote(request, question_id):
             },
         )
 
-    Vote.objects.create(
-        choice=selected_choice,
-        voter=request.user
-    )
+    Vote.objects.create(choice=selected_choice, voter=request.user)
     logger.info("Vote recorded successfully.")
 
     return HttpResponseRedirect(reverse("polls:results", args=(question_id,)))

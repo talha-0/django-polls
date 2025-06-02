@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Question, Choice, Vote
+
+from .models import Choice, Question, Vote
 
 
 class ChoiceInline(admin.TabularInline):
@@ -26,7 +27,6 @@ class VotesInline(admin.TabularInline):
 class ChoiceAdmin(admin.ModelAdmin):
     list_display = ["choice_text", "votes", "question"]
     inlines = [VotesInline]
-    list_filter = ["question"]
 
 
 admin.site.register(Question, QuestionAdmin)

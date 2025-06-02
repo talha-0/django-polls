@@ -2,128 +2,130 @@
 {% load static %}
 
 {% block content %}
-  <h2 class="mb-4">Add a New Question</h2>
-  <form method="POST">
+<h2 class="mb-4">Add / Edit Question</h2>
+<form method="POST">
     {% csrf_token %}
-
     <div class="mb-3">
-      {{ form.question_text.label_tag }}
-      {{ form.question_text }}
-      {% for error in form.question_text.errors %}
+        {{ form.question_text.label_tag }}
+        {{ form.question_text }}
+        {% for error in form.question_text.errors %}
         <div class="text-danger small">{{ error }}</div>
-      {% endfor %}
+        {% endfor %}
     </div>
 
     <h4 class="mt-4">Choices</h4>
     {{ formset.management_form }}
 
     <div id="choice-formset">
-      {% for form in formset %}
+        {% for form in formset %}
         <div class="choice-form mb-2 border rounded p-2 position-relative">
-          {{ form.choice_text.label_tag }}
-          {{ form.choice_text }}
-          <div class="d-none">{{ form.DELETE }}</div>
-          <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-choice" style="right: 0.5rem; top: 0.5rem;">×</button>
-          {% for error in form.choice_text.errors %}
+            <label>Choice {{ forloop.counter }}</label>
+            {{ form.choice_text }}
+            {{ form.id }}
+            <div class="d-none">{{ form.DELETE }}</div>
+
+            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-choice" style="right: 0.5rem; top: 0.5rem;">×</button>
+            {% for error in form.non_field_errors %}
             <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
+            {% endfor %}
         </div>
-      {% endfor %}
+        {% endfor %}
     </div>
 
     <div class="choice-form d-none" id="empty-form">
-      {{ formset.empty_form.choice_text.label_tag }}
-      {{ formset.empty_form.choice_text }}
-      <div class="d-none">{{ formset.empty_form.DELETE }}</div>
-      <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-choice" style="right: 0.5rem; top: 0.5rem;">×</button>
+        <label>Choice __prefix__</label>
+        {{ formset.empty_form.choice_text }}
+        {{ formset.empty_form.id }}
+        <div class="d-none">{{ formset.empty_form.DELETE }}</div>
+
+        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-choice" style="right: 0.5rem; top: 0.5rem;">×</button>
     </div>
 
     <button type="button" class="btn btn-secondary mt-3" id="add-choice">Add Another Choice</button>
-
     <button type="submit" class="btn btn-primary mt-3">Submit</button>
-  </form>
+</form>
 
-  <script>
-    const formsetDiv = document.getElementById('choice-formset')
-    const emptyForm = document.getElementById('empty-form')
-    const addBtn = document.getElementById('add-choice')
-    const totalForms = document.querySelector('[name="{{ formset.prefix }}-TOTAL_FORMS"]')
-
-    const emptyFormTemplate = emptyForm.innerHTML
-
-    function updateDeleteButtons() {
-      document.querySelectorAll('.remove-choice').forEach((btn) => {
-        btn.onclick = () => {
-          const allForms = formsetDiv.querySelectorAll('.choice-form:not(.d-none)')
-          if (allForms.length <= 1) {
-            alert('At least one choice is required.')
-            return
-          }
-
-          const formDiv = btn.closest('.choice-form')
-          const deleteInput = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]')
-
-          if (deleteInput) {
-            deleteInput.checked = true
-            formDiv.classList.add('d-none')
-          } else {
-            formDiv.remove()
-            updateTotalForms()
-          }
-
-          renumberChoices()
-        }
-      })
-    }
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const formsetDiv = document.getElementById("choice-formset");
+    const emptyForm = document.getElementById("empty-form");
+    const addBtn = document.getElementById("add-choice");
+    const totalForms = document.querySelector('[name="{{ formset.prefix }}-TOTAL_FORMS"]');
+    const emptyFormTemplate = emptyForm.innerHTML;
 
     function updateTotalForms() {
-      const totalVisible = formsetDiv.querySelectorAll('.choice-form:not(.d-none)').length
-      totalForms.value = totalVisible
+        const totalCount = formsetDiv.querySelectorAll(".choice-form").length;
+        totalForms.value = totalCount;
     }
 
-    function renumberChoices() {
-      const forms = formsetDiv.querySelectorAll('.choice-form:not(.d-none)')
-      forms.forEach((div, index) => {
-        const label = div.querySelector('label')
-        const input = div.querySelector('input[type="text"]')
-        const deleteCheckbox = div.querySelector('input[type="checkbox"][name$="-DELETE"]')
+    function renumberForms() {
+        const forms = formsetDiv.querySelectorAll(".choice-form");
+        let visibleIndex = 0;
 
-        if (label && input) {
-          const newIndex = index
+        forms.forEach((formDiv, i) => {
+            const input = formDiv.querySelector('input[type="text"]');
+            const idInput = formDiv.querySelector('input[name$="-id"]');
+            const deleteInput = formDiv.querySelector('input[name$="-DELETE"]');
+            const label = formDiv.querySelector("label");
 
-          label.innerText = `Choice ${newIndex + 1}`
+            // Only renumber visible ones (not marked for delete)
+            if (!deleteInput || !deleteInput.checked) {
+                if (label) {
+                    label.setAttribute("for", `id_{{ formset.prefix }}-${i}-choice_text`);
+                    label.textContent = `Choice ${visibleIndex + 1}`;
+                }
+                if (input) {
+                    input.id = `id_{{ formset.prefix }}-${i}-choice_text`;
+                    input.name = `{{ formset.prefix }}-${i}-choice_text`;
+                }
+                if (idInput) {
+                    idInput.name = `{{ formset.prefix }}-${i}-id`;
+                    idInput.id = `id_{{ formset.prefix }}-${i}-id`;
+                }
+                if (deleteInput) {
+                    deleteInput.name = `{{ formset.prefix }}-${i}-DELETE`;
+                    deleteInput.id = `id_{{ formset.prefix }}-${i}-DELETE`;
+                }
+                visibleIndex++;
+            }
+        });
 
-          const newInputId = `id_{{ formset.prefix }}-${newIndex}-choice_text`
-          label.setAttribute('for', newInputId)
+        updateTotalForms();
+    }
 
-          input.id = newInputId
-          input.name = `{{ formset.prefix }}-${newIndex}-choice_text`
+    function removeChoice(event) {
+        const button = event.target;
+        const formDiv = button.closest(".choice-form");
 
-          if (deleteCheckbox) {
-            const newDeleteId = `id_{{ formset.prefix }}-${newIndex}-DELETE`
-            deleteCheckbox.id = newDeleteId
-            deleteCheckbox.name = `{{ formset.prefix }}-${newIndex}-DELETE`
-          }
+        const deleteInput = formDiv.querySelector('input[name$="-DELETE"]');
+        if (deleteInput) {
+            deleteInput.checked = true;
+            formDiv.style.display = "none";
         }
-      })
 
-      updateTotalForms()
+        renumberForms();
     }
 
-    addBtn.addEventListener('click', () => {
-      const formNum = parseInt(totalForms.value)
-      const newForm = document.createElement('div')
-      newForm.className = 'choice-form mb-2 border rounded p-2 position-relative'
-      newForm.innerHTML = emptyFormTemplate.replace(/__prefix__/g, formNum)
+    function addChoice() {
+        const newFormDiv = document.createElement("div");
+        newFormDiv.className = "choice-form mb-2 border rounded p-2 position-relative";
+        const formNum = parseInt(totalForms.value);
+        newFormDiv.innerHTML = emptyFormTemplate.replace(/__prefix__/g, formNum);
+        formsetDiv.appendChild(newFormDiv);
 
-      formsetDiv.appendChild(newForm)
+        renumberForms();
+        attachRemoveListeners();
+    }
 
-      totalForms.value = formNum + 1
-      updateDeleteButtons()
-      renumberChoices()
-    })
+    function attachRemoveListeners() {
+        document.querySelectorAll(".remove-choice").forEach((button) => {
+            button.removeEventListener("click", removeChoice); // prevent duplicates
+            button.addEventListener("click", removeChoice);
+        });
+    }
 
-    updateDeleteButtons()
-    renumberChoices()
-  </script>
+    attachRemoveListeners();
+    addBtn.addEventListener("click", addChoice);
+});
+</script>
 {% endblock %}

@@ -1,6 +1,22 @@
 <nav class="navbar navbar-dark bg-primary mb-4">
-  <div class="container">
-    <a class="navbar-brand" href="{% url 'polls:index' %}">Pollster</a>
+  <div class="container d-flex justify-content-between align-items-center">
+    <div>
+      <a class="navbar-brand" href="{% url 'polls:index' %}">Pollster</a>
+      <a class="navbar-brand" href="{% url 'polls:my_polls' %}">My Polls</a>
+    </div>
+
+    <form class="d-flex" role="search" method="get" action="{% url 'polls:index' %}">
+      <input
+        class="form-control me-2"
+        type="search"
+        name="question_text"
+        placeholder="Search polls"
+        value="{{ request.GET.question_text }}"
+        aria-label="Search"
+      />
+      <button class="btn btn-outline-light" type="submit">Search</button>
+    </form>
+
     <a class="navbar-brand" href="{% url 'logout' %}">Log Out</a>
   </div>
 </nav>

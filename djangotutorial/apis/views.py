@@ -2,6 +2,7 @@ from django.utils import timezone
 from polls.models import Choice, Question, Vote
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -14,8 +15,11 @@ def list_questions(request):
     questions = Question.objects.filter(pub_date__lte=timezone.now()).order_by(
         "-pub_date"
     )
-    serializer = QuestionSerializer(questions, many=True)
-    return Response(serializer.data)
+    paginator = PageNumberPagination()
+    paginator.page_size = 7
+    result_page = paginator.paginate_queryset(questions, request)
+    serializer = QuestionSerializer(result_page, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(["GET"])
@@ -108,12 +112,13 @@ def list_question_choices(request, pk):
     try:
         question = Question.objects.get(pk=pk, pub_date__lte=timezone.now())
     except Question.DoesNotExist:
-        return Response({"error": "Question not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Question not found"}, status=status.HTTP_404_NOT_FOUND
+        )
 
     choices = question.choice_set.all()
     serializer = ChoiceSerializer(choices, many=True)
     return Response(serializer.data)
-
 
 
 @api_view(["GET"])

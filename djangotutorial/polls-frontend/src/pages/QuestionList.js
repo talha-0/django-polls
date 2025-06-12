@@ -12,6 +12,7 @@ export default function QuestionList() {
     axios
       .get(url)
       .then((res) => {
+        console.log(res);
         setQuestions(res.data.results);
         setNextPage(res.data.next);
         setPrevPage(res.data.previous);
@@ -32,9 +33,9 @@ export default function QuestionList() {
   };
 
   return (
-    <>
+    <div className="bg-gray-900 h-screen">
       <Navbar />
-      <div className="bg-gray-900 py-20 px-4">
+      <div className="py-20 px-4">
         <div className="max-w-4xl mx-auto bg-white/10 backdrop-blur-md rounded-xl shadow-xl p-6">
           <h2 className="text-3xl font-bold text-white mb-6 text-center">
             Questions
@@ -102,6 +103,6 @@ export default function QuestionList() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -1,25 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import Navbar from '../components/navbar';
-import axios from '../api/axios';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import Navbar from "../components/navbar";
+import axios from "../api/axios";
+import { useNavigate } from "react-router-dom";
 
 export default function ChoiceAdd() {
-  const [choiceText, setChoiceText] = useState('');
-  const [questionId, setQuestionId] = useState('');
+  const [choiceText, setChoiceText] = useState("");
+  const [questionId, setQuestionId] = useState("");
   const [questions, setQuestions] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get('questions/')
-      .then(res => setQuestions(res.data))
-      .catch(() => alert('Failed to fetch questions'));
+    axios
+      .get("questions/user/")
+      .then((res) => setQuestions(res.data))
+      .catch(() => alert("Failed to fetch questions"));
   }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post('choices/add/', { choice_text: choiceText, question: questionId })
-      .then(() => navigate('/choices'))
-      .catch(() => alert('Failed to add choice'));
+    axios
+      .post("choices/add/", { choice_text: choiceText, question: questionId })
+      .then(() => navigate("/choices"))
+      .catch(() => alert("Failed to add choice"));
   };
 
   return (
@@ -40,8 +42,10 @@ export default function ChoiceAdd() {
           required
         >
           <option value="">Select question</option>
-          {questions.map(q => (
-            <option key={q.id} value={q.id}>{q.question_text}</option>
+          {questions.map((q) => (
+            <option key={q.id} value={q.id}>
+              {q.question_text}
+            </option>
           ))}
         </select>
         <button type="submit">Add Choice</button>
